@@ -1,8 +1,9 @@
 import os
 
-from flask_injector import singleton
+from flask_injector import FlaskInjector, singleton
 import flask_injector
 from flask_sqlalchemy import SQLAlchemy
+from injector import Injector, Module
 import yaml
 from flask import Flask
 
@@ -11,19 +12,27 @@ from app.repository import User, UserRepository
 from app.views import people
 
 
-def setup_database(app):
-    with app.app_context():
+class AppModule(Module):
+    def __init__(self, app):
+        self.app = app
+
+    """Configure the application."""
+
+    def configure(self, binder):
+        # We configure the DB here, explicitly, as Flask-SQLAlchemy requires
+        # the DB to be configured before request handlers are called.
+        db = self.configure_db(self.app)
+        binder.bind(SQLAlchemy, to=db, scope=singleton)
+        binder.bind(UserRepository, to=UserRepository(db), scope=singleton)
+
+    def configure_db(self, app):
         db.create_all()
         user = User()
         if not User.query.filter_by(username="Tom").first():
             user.username = "Tom"
             db.session.add(user)
             db.session.commit()
-
-
-def configure(binder):
-    binder.bind(SQLAlchemy, to=db, scope=singleton)
-    binder.bind(UserRepository, to=UserRepository(db), scope=singleton)
+        return db
 
 
 def create_app():
@@ -35,7 +44,9 @@ def create_app():
 
     app.register_blueprint(people, url_prefix="")
 
-    flask_injector.FlaskInjector(app=app, modules=[configure])
+    with app.app_context():
+        injector = Injector([AppModule(app)])
 
-    setup_database(app)
+    FlaskInjector(app=app, injector=injector)
+
     return app

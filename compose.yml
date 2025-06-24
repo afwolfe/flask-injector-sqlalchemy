@@ -1,0 +1,7 @@
+---
+services:
+  app:
+    build: .
+    image: flask-injector-sqlalchemy:latest
+    ports:
+      - 8080:8080

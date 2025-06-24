@@ -12,6 +12,6 @@ people = Blueprint(
 def test(repo: UserRepository):
     user = repo.get_by_name("Tom")
     if user:
-        return "Test: Username %s " % user.username
+        return "Test: Username %s" % user.username
     else:
         return "User not found"
